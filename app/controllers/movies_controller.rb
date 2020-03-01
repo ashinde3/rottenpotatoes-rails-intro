@@ -1,7 +1,7 @@
 class MoviesController < ApplicationController
 
   def movie_params
-    params.require(:movie).permit(:title, :rating, :description, :release_date, :sort)
+    params.require(:movie).permit(:title, :rating, :description, :release_date)
   end
 
   def show
@@ -11,30 +11,28 @@ class MoviesController < ApplicationController
   end
 
   def index
-    
-    if (params[:ratings] == nil && session[:ratings] != nil) ||
-       (params[:sort] == nil && session[:sort] != nil)
-      flash.keep
-      redirect_to movies_path(ratings: session[:ratings] || params[:ratings], sort: session[:sort] || params[:sort])
-    end
-    
-    session[:sort] = params[:sort]
-    session[:ratings] = params[:ratings]
-    
-    @all_ratings = ['G','PG','PG-13','R','NC-17']
-    ratings = params[:ratings] != nil ? params[:ratings].keys : @all_ratings
-  
-    @rating_checked = Hash[@all_ratings.map{|r| [r, ratings.include?(r)]}]
-    
-    @movies = Movie.where(rating: ratings)
 
-    
-  	if params[:sort] == "title" 
-  		@movies = @movies.all.sort_by{|e| e[:title]}
-  	elsif params[:sort] == "release_date" 
-  		@movies = @movies.all.sort_by{|e| e[:release_date]}
-  	end
-  	
+    @all_ratings = Movie.ratings
+
+    #Initial setting up of sessions
+    session[:ratings] ||= @all_ratings
+    session[:sort] ||= 'id'
+
+    @title_hilite = session[:title_hilite] = "hilite" if params[:sort] == 'title'
+    @date_hilite = session[:date_hilite] = "hilite" if params[:sort] == 'release_date'
+
+    #Remembering the user's preferences
+    session[:ratings] = params[:ratings].keys if params[:ratings]
+    session[:sort] = params[:sort] if params[:sort]
+
+    #to preserve restfulness
+    redirect_to movies_path(ratings: Hash[session[:ratings].map {|r| [r,1]}], sort: session[:sort]) if  params[:ratings].nil? || params[:sort].nil?
+
+    @ratings = session[:ratings]
+    @sort = session[:sort]
+
+    @movies = Movie.where(rating: @ratings).order(@sort)
+
   end
 
   def new
